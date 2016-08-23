@@ -3,6 +3,7 @@
 import sys
 import os
 import warnings
+import subprocess
 
 from distutils.dist import Distribution
 from setuptools.command.test import test as TestCommand
@@ -95,7 +96,44 @@ for lib_talib_dir in lib_talib_dirs:
     except OSError:
         pass
 else:
-    warnings.warn('Cannot find ta-lib library, installation may fail.')
+    warnings.warn('Cannot find ta-lib library, Try to build from source. installation may fail.')
+    if sys.platform == "darwin":
+        app_env = "csr"
+        os_family_dirname = "freebsd"
+        compiler = "g++"
+    elif sys.platform == "linux":
+        app_env = "csr"
+        os_family_dirname = "linux"
+        compiler = "g++"
+    else:
+        raise NotImplementedError("sys.platform: %s" % sys.platform)
+
+    vendor_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "vendor",
+    )
+    vendor_include_dir = os.path.join(
+        vendor_dir,
+        "include",
+    )
+    vendor_talib_dir = os.path.join(
+        vendor_dir,
+        "ta-lib",
+    )
+    makefile_dir = os.path.join(
+        vendor_talib_dir,
+        "make",
+        app_env,
+        os_family_dirname,
+        compiler,
+        "ta_libc"
+    )
+    subprocess.check_call(["make", "--directory=%s" % makefile_dir])
+    talib_lib_dir = os.path.join(vendor_talib_dir, "lib")
+    include_dirs.append(vendor_include_dir)
+    lib_talib_dirs.append(talib_lib_dir)
+    lib_talib_name = "ta_libc_%s" % app_env
+
 
 cmdclass = {"test": PyTest}
 if has_cython:
